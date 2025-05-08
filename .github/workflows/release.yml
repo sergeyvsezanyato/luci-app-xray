@@ -1,0 +1,43 @@
+name: Build luci-app-xray
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Set up build environment
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential libncurses5-dev zlib1g-dev gawk git gettext libssl-dev xsltproc wget unzip python3
+
+      - name: Clone OpenWrt SDK (x86_64)
+        run: |
+          git clone https://github.com/openwrt/openwrt
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+
+      - name: Add luci-app-xray package
+        run: |
+          mkdir -p openwrt/package/luci-app-xray
+          cp -r ./* openwrt/package/luci-app-xray/
+
+      - name: Compile luci-app-xray
+        run: |
+          cd openwrt
+          make package/luci-app-xray/compile V=s
+
+      - name: Upload .ipk
+        uses: actions/upload-artifact@v3
+        with:
+          name: ipk-packages
+          path: openwrt/bin/packages/**/luci-app-xray_*.ipk
